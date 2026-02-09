@@ -1,0 +1,41 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model RestaurantRequest {
+  id          String   @id @default(cuid())
+  name        String
+  cuisine     String
+  address     String
+  description String?
+  isBusiness  Boolean  @default(false)
+  email       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Restaurant {
+  id               String   @id @default(cuid())
+  name             String
+  cuisine          String
+  image            String
+  rating           Float
+  reviews          Int
+  latitude         Float
+  longitude        Float
+  address          String?
+  description      String?
+  features         String[] @default([])
+  price            String?
+  status           String?
+  verificationDate DateTime?
+  verified         Boolean  @default(false)
+  verifiedBy       String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}

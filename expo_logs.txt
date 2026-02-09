@@ -1,0 +1,7 @@
+Starting project at /Users/ezmoney/Documents/VsProjects/halalSpot
+› Port 8081 is running this app in another window
+  /Users/ezmoney/Documents/VsProjects/halalSpot (pid 45255)
+Input is required, but 'npx expo' is in non-interactive mode.
+Required input:
+> Use port 8082 instead?
+› Skipping dev server
