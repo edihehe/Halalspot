@@ -4,19 +4,10 @@ import { COLORS, SHADOWS, SPACING } from '@/constants/theme';
 import { fetchRestaurants } from '@/services/api';
 import { Restaurant } from '@/services/mockData';
 import { Stack } from 'expo-router';
-import { LocateFixed, MapPin, Navigation } from 'lucide-react-native';
+import { LocateFixed, Navigation } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { Dimensions, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
-
-// Dynamically import MapView based on platform to avoid crashes on Web
-let MapView: any;
-let Marker: any;
-
-if (Platform.OS !== 'web') {
-  const MapModule = require('react-native-maps');
-  MapView = MapModule.default;
-  Marker = MapModule.Marker;
-}
+import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
 
 const { width, height } = Dimensions.get('window');
 
@@ -38,56 +29,38 @@ export default function MapScreen() {
     })();
   }, []);
 
-  // Simple Web Mock for Map
-  if (Platform.OS === 'web') {
-    return (
-      <View style={styles.webPlaceholder}>
-        <Stack.Screen options={{ headerShown: true, title: 'Map View' }} />
-        <MapPin size={48} color={COLORS.primary} />
-        <Typography variant="h2" style={{ marginTop: SPACING.md }}>
-          Map View is not available on Web
-        </Typography>
-        <Typography variant="body" color={COLORS.textLight}>
-          Please use a mobile device or simulator.
-        </Typography>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {MapView && (
-        <MapView
-          style={styles.map}
-          initialRegion={{
-            latitude: 39.9526,
-            longitude: -75.1652,
-            latitudeDelta: 0.1,
-            longitudeDelta: 0.1,
-          }}
-          showsUserLocation
-          showsMyLocationButton={false}
-        >
-          {restaurants.map((restaurant) => (
-            <Marker
-              key={restaurant.id}
-              coordinate={{ latitude: restaurant.latitude, longitude: restaurant.longitude }}
-              onPress={() => setSelectedRestaurant(restaurant)}
-            >
-              <View style={styles.customMarker}>
-                <View style={styles.markerCircle}>
-                  <Typography variant="caption" color="#FFF" weight="bold">
-                    {restaurant.rating}
-                  </Typography>
-                </View>
-                <View style={styles.markerPointer} />
+      <MapView
+        style={styles.map}
+        initialRegion={{
+          latitude: 39.9526,
+          longitude: -75.1652,
+          latitudeDelta: 0.1,
+          longitudeDelta: 0.1,
+        }}
+        showsUserLocation
+        showsMyLocationButton={false}
+      >
+        {restaurants.map((restaurant) => (
+          <Marker
+            key={restaurant.id}
+            coordinate={{ latitude: restaurant.latitude, longitude: restaurant.longitude }}
+            onPress={() => setSelectedRestaurant(restaurant)}
+          >
+            <View style={styles.customMarker}>
+              <View style={styles.markerCircle}>
+                <Typography variant="caption" color="#FFF" weight="bold">
+                  {restaurant.rating}
+                </Typography>
               </View>
-            </Marker>
-          ))}
-        </MapView>
-      )}
+              <View style={styles.markerPointer} />
+            </View>
+          </Marker>
+        ))}
+      </MapView>
 
       {/* Floating Header */}
       <View style={styles.floatingHeader}>
@@ -141,13 +114,6 @@ const styles = StyleSheet.create({
   map: {
     width: '100%',
     height: '100%',
-  },
-  webPlaceholder: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-    padding: SPACING.xl,
   },
   floatingHeader: {
     position: 'absolute',
