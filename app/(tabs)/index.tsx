@@ -1,56 +1,46 @@
-import { RestaurantCard } from '@/components/RestaurantCard';
-import { Input } from '@/components/ui/Input';
+import { RestaurantCarousel } from '@/components/RestaurantCarousel';
 import { Typography } from '@/components/ui/Typography';
-import { COLORS, RADIUS, SHADOWS, SPACING } from '@/constants/theme';
+import { COLORS, RADIUS, SPACING } from '@/constants/theme';
 import { fetchRestaurants } from '@/services/api';
-import { CATEGORIES, RESTAURANTS } from '@/services/mockData';
+import { CATEGORIES } from '@/services/mockData';
 import * as Location from 'expo-location';
 import { Stack } from 'expo-router';
-import { MapPin } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
-import { FlatList, SafeAreaView, ScrollView, StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Bell, MapPin, Search } from 'lucide-react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { FlatList, SafeAreaView, ScrollView, StatusBar, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
-  const [city, setCity] = useState<string>('San Francisco, CA');
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [city, setCity] = useState<string>('Philadelphia, PA');
   const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState('1'); // Default to 'All'
-  const [restaurants, setRestaurants] = useState(RESTAURANTS);
-  const [sortedRestaurants, setSortedRestaurants] = useState(RESTAURANTS);
+  const [selectedCategory, setSelectedCategory] = useState('1'); 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [restaurants, setRestaurants] = useState<any[]>([]);
 
   useEffect(() => {
     (async () => {
       try {
-        // Fetch data from API (or DB directly via API route)
         const data = await fetchRestaurants();
-        setRestaurants(data);
-        setSortedRestaurants(data);
-
+        
         let { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          setErrorMsg('Permission to access location was denied');
-          setLoading(false);
-          return;
+        let userLocation = null;
+        if (status === 'granted') {
+          userLocation = await Location.getCurrentPositionAsync({});
+          setLocation(userLocation);
+
+          let address = await Location.reverseGeocodeAsync({
+            latitude: userLocation.coords.latitude,
+            longitude: userLocation.coords.longitude,
+          });
+
+          if (address.length > 0) {
+            const { city, region } = address[0];
+            setCity(`${city}, ${region}`);
+          }
         }
 
-        let location = await Location.getCurrentPositionAsync({});
-        setLocation(location);
-
-        // Reverse Geocoding
-        let address = await Location.reverseGeocodeAsync({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        });
-
-        if (address.length > 0) {
-          const { city, region } = address[0];
-          setCity(`${city}, ${region}`);
-        }
-
-        // Simple Distance Calculation
         const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-          const R = 3958.8; // Radius of Earth in miles
+          const R = 3958.8;
           const dLat = (lat2 - lat1) * (Math.PI / 180);
           const dLon = (lon2 - lon1) * (Math.PI / 180);
           const a =
@@ -61,72 +51,121 @@ export default function HomeScreen() {
           return R * c;
         };
 
-        // Calculate distances for ALL fetched restaurants initially
-        const withDistances = data.map((restaurant) => ({
-          ...restaurant,
-          distanceVal: calculateDistance(
-            location.coords.latitude,
-            location.coords.longitude,
-            restaurant.latitude,
-            restaurant.longitude
-          ),
-          distance: `${calculateDistance(
-            location.coords.latitude,
-            location.coords.longitude,
-            restaurant.latitude,
-            restaurant.longitude
-          ).toFixed(1)} mi`,
-        })).sort((a, b) => (a.distanceVal || 0) - (b.distanceVal || 0));
+        const withDistances = data.map((restaurant) => {
+          let dist = 1.2;
+          if (userLocation) {
+            dist = calculateDistance(
+              userLocation.coords.latitude,
+              userLocation.coords.longitude,
+              restaurant.latitude,
+              restaurant.longitude
+            );
+          }
+          return {
+            ...restaurant,
+            distanceVal: dist,
+            distance: `${dist.toFixed(1)} mi`,
+          };
+        });
 
-        setRestaurants(withDistances as any);
-        setSortedRestaurants(withDistances as any);
+        setRestaurants(withDistances);
       } catch (error) {
-        console.warn('Location error:', error);
-        setErrorMsg('Could not fetch location');
+        console.warn('Init error:', error);
       } finally {
         setLoading(false);
       }
     })();
   }, []);
 
-  // Filter effect
-  useEffect(() => {
-    if (selectedCategory === '1') {
-      setSortedRestaurants(restaurants);
-    } else {
-      const categoryName = CATEGORIES.find((c) => c.id === selectedCategory)?.name;
-      const filtered = restaurants.filter((r) => {
-        return r.cuisine.includes(categoryName || '');
-      });
-      setSortedRestaurants(filtered);
-    }
-  }, [selectedCategory, restaurants]);
+  const filteredRestaurants = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const selectedCategoryName = CATEGORIES.find((c) => c.id === selectedCategory)?.name || 'All';
+
+    return restaurants.filter((restaurant) => {
+      const matchesCategory =
+        selectedCategoryName === 'All' ||
+        restaurant.cuisine.toLowerCase().includes(selectedCategoryName.toLowerCase());
+
+      const matchesSearch =
+        !q ||
+        restaurant.name.toLowerCase().includes(q) ||
+        restaurant.cuisine.toLowerCase().includes(q) ||
+        restaurant.address.toLowerCase().includes(q);
+
+      return matchesCategory && matchesSearch;
+    });
+  }, [restaurants, searchQuery, selectedCategory]);
+
+  const nearYou = useMemo(() => 
+    [...filteredRestaurants].sort((a, b) => a.distanceVal - b.distanceVal).slice(0, 6)
+  , [filteredRestaurants]);
+
+  const topRated = useMemo(() => 
+    filteredRestaurants.filter(r => r.rating >= 4.7).sort((a, b) => b.rating - a.rating)
+  , [filteredRestaurants]);
+
+  const fastPickup = useMemo(() => 
+    filteredRestaurants.filter(r => {
+      const timeMatch = r.pickupTime?.match(/(\d+)/);
+      return timeMatch && parseInt(timeMatch[1]) <= 15;
+    })
+  , [filteredRestaurants]);
+
+  const newSpots = useMemo(() => 
+    [...filteredRestaurants].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  , [filteredRestaurants]);
+
+  const openNow = useMemo(() => 
+    filteredRestaurants.filter(r => r.status === 'Open')
+  , [filteredRestaurants]);
 
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar barStyle="dark-content" />
 
+      {/* Modern Header */}
       <View style={styles.header}>
-        <View>
-          <Typography variant="label" color={COLORS.primary}>
-            Location
-          </Typography>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <MapPin size={16} color={COLORS.text} style={{ marginRight: 4 }} />
-            <Typography variant="h3">{loading ? 'Locating...' : city}</Typography>
+        <View style={styles.headerTop}>
+          <View>
+            <Typography variant="label" color={COLORS.textLight}>
+              ASAP • {loading ? 'Locating...' : city}
+            </Typography>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <MapPin size={14} color={COLORS.primary} style={{ marginRight: 4 }} />
+              <Typography variant="h3" weight="bold">Deliver Now</Typography>
+            </View>
           </View>
+          <TouchableOpacity style={styles.iconBtn}>
+            <Bell size={20} color={COLORS.text} />
+          </TouchableOpacity>
         </View>
-        <View style={styles.searchContainer}>
-          <Input placeholder="Search restaurants, cuisines..." />
+
+        <View style={styles.searchBar}>
+          <Search size={18} color={COLORS.textLight} style={{ marginRight: SPACING.sm }} />
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search restaurants, cuisines..."
+            placeholderTextColor={COLORS.textLight}
+            style={styles.searchInput}
+            returnKeyType="search"
+          />
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Categories */}
-        <View style={styles.section}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        nestedScrollEnabled
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Categories Carousel */}
+        <View style={styles.categoriesSection}>
           <FlatList
             horizontal
+            nestedScrollEnabled
+            directionalLockEnabled
             showsHorizontalScrollIndicator={false}
             data={CATEGORIES}
             keyExtractor={(item) => item.id}
@@ -134,14 +173,14 @@ export default function HomeScreen() {
             renderItem={({ item }) => {
               const isSelected = selectedCategory === item.id;
               return (
-                <TouchableOpacity onPress={() => setSelectedCategory(item.id)}>
+                <TouchableOpacity onPress={() => setSelectedCategory(item.id)} style={styles.categoryItem}>
                   <View
                     style={[
                       styles.categoryPill,
-                      isSelected && { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+                      isSelected && { backgroundColor: COLORS.primary },
                     ]}
                   >
-                    <Typography variant="label" color={isSelected ? '#FFF' : COLORS.textLight}>
+                    <Typography variant="label" color={isSelected ? '#FFF' : COLORS.text} weight="700">
                       {item.name}
                     </Typography>
                   </View>
@@ -152,56 +191,30 @@ export default function HomeScreen() {
           />
         </View>
 
-        {/* Featured */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Typography variant="h2">Featured</Typography>
-            <Typography variant="label" color={COLORS.primary}>
-              See All
+        {/* Dynamic Carousel Rows */}
+        <RestaurantCarousel title="Halal Near You" data={nearYou} onSeeAll={() => {}} />
+        
+        <RestaurantCarousel title="Top Rated" data={topRated} onSeeAll={() => {}} />
+
+        <RestaurantCarousel title="Fast Pickup" data={fastPickup} onSeeAll={() => {}} />
+
+        <RestaurantCarousel title="New on Halal Spot" data={newSpots} onSeeAll={() => {}} />
+
+        <RestaurantCarousel title="Open Now" data={openNow} onSeeAll={() => {}} />
+
+        {filteredRestaurants.length === 0 && (
+          <View style={styles.noResults}>
+            <Typography variant="h3" align="center">
+              No restaurants found
+            </Typography>
+            <Typography variant="body" color={COLORS.textLight} align="center" style={{ marginTop: 6 }}>
+              Try a different cuisine, name, or address.
             </Typography>
           </View>
-          <FlatList
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            data={restaurants.slice(0, 5)} // Just show top 5 nearest as featured for now or keep random
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={{ paddingHorizontal: SPACING.lg }}
-            renderItem={({ item }) => (
-              <View style={{ width: 280, marginRight: SPACING.md }}>
-                <RestaurantCard
-                  id={item.id}
-                  name={item.name}
-                  cuisine={item.cuisine}
-                  rating={item.rating}
-                  reviews={item.reviews}
-                  image={item.image}
-                  distance={item.distance || '1.2 mi'}
-                  price={item.price}
-                />
-              </View>
-            )}
-          />
-        </View>
+        )}
 
-        {/* Near You */}
-        <View style={[styles.section, { paddingHorizontal: SPACING.lg, marginBottom: 80 }]}>
-          <Typography variant="h2" style={{ marginBottom: SPACING.md }}>
-            Near You
-          </Typography>
-          {sortedRestaurants.map((item: any) => (
-            <RestaurantCard
-              key={item.id}
-              id={item.id}
-              name={item.name}
-              cuisine={item.cuisine}
-              rating={item.rating}
-              reviews={item.reviews}
-              image={item.image}
-              distance={item.distance || '1.5 mi'}
-              price={item.price}
-            />
-          ))}
-        </View>
+        {/* Bottom Padding */}
+        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -213,31 +226,49 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   header: {
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
-    paddingBottom: SPACING.lg,
     backgroundColor: COLORS.surface,
-    borderBottomLeftRadius: RADIUS.xl,
-    borderBottomRightRadius: RADIUS.xl,
-    ...SHADOWS.medium,
-    zIndex: 10,
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
   },
-  searchContainer: {
-    marginTop: SPACING.md,
-  },
-  scrollContent: {
-    paddingTop: SPACING.md,
-    paddingBottom: SPACING.xxl,
-  },
-  section: {
-    marginTop: SPACING.xl,
-  },
-  sectionHeader: {
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.md,
     marginBottom: SPACING.md,
+  },
+  iconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 12,
+    borderRadius: RADIUS.full,
+  },
+  searchInput: {
+    flex: 1,
+    color: COLORS.text,
+    fontSize: 15,
+    paddingVertical: 0,
+  },
+  scrollContent: {
+    paddingVertical: SPACING.md,
+  },
+  categoriesSection: {
+    marginBottom: SPACING.md,
+  },
+  categoryItem: {
+    alignItems: 'center',
   },
   categoryPill: {
     paddingHorizontal: 20,
@@ -245,7 +276,15 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
-    ...SHADOWS.small,
+    borderColor: COLORS.border,
+  },
+  noResults: {
+    marginHorizontal: SPACING.lg,
+    marginTop: SPACING.lg,
+    padding: SPACING.lg,
+    borderRadius: RADIUS.lg,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
 });

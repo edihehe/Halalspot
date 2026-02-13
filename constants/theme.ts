@@ -1,14 +1,16 @@
 export const COLORS = {
-  primary: '#059669', // Emerald 600
-  secondary: '#10B981', // Emerald 500
-  background: '#F9FAFB', // Gray 50
+  primary: '#0F8A5F',
+  secondary: '#2BB673',
+  background: '#F4F8F6',
   surface: '#FFFFFF',
-  text: '#111827', // Gray 900
-  textLight: '#6B7280', // Gray 500
-  border: '#E5E7EB', // Gray 200
-  success: '#10B981',
+  text: '#10231A',
+  textLight: '#5F7368',
+  border: '#D7E4DD',
+  success: '#16A34A',
   error: '#EF4444',
   warning: '#F59E0B',
+  formBackground: '#F8FBF9',
+  focus: '#0F8A5F',
 };
 
 export const SPACING = {
@@ -22,9 +24,9 @@ export const SPACING = {
 
 export const RADIUS = {
   sm: 4,
-  md: 8,
-  lg: 12,
-  xl: 16,
+  md: 10,
+  lg: 14,
+  xl: 20,
   full: 9999,
 };
 
@@ -32,15 +34,15 @@ export const SHADOWS = {
   small: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 2,
   },
   medium: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
+    shadowOpacity: 0.07,
+    shadowRadius: 14,
     elevation: 8,
   },
   large: {

@@ -17,6 +17,7 @@ interface RestaurantProps {
   distance?: string;
   verified?: boolean;
   price?: string;
+  pickupTime?: string;
 }
 
 export const RestaurantCard: React.FC<RestaurantProps> = ({
@@ -29,6 +30,7 @@ export const RestaurantCard: React.FC<RestaurantProps> = ({
   distance = '1.2 mi',
   verified = true,
   price = '$$',
+  pickupTime = '20-30 min',
 }) => {
   const router = useRouter();
 
@@ -52,9 +54,14 @@ export const RestaurantCard: React.FC<RestaurantProps> = ({
         </View>
         <View style={styles.content}>
           <View style={styles.header}>
-            <Typography variant="h3" numberOfLines={1} style={styles.name}>
-              {name}
-            </Typography>
+            <View style={{ flex: 1 }}>
+              <Typography variant="h3" numberOfLines={1} style={styles.name}>
+                {name}
+              </Typography>
+              <Typography variant="body" color={COLORS.textLight} numberOfLines={1}>
+                {cuisine}
+              </Typography>
+            </View>
             <View style={styles.ratingBadge}>
               <Star size={12} color="#FFF" fill="#FFF" />
               <Typography variant="label" color="#FFF" weight="700" style={{ marginLeft: 2 }}>
@@ -64,12 +71,12 @@ export const RestaurantCard: React.FC<RestaurantProps> = ({
           </View>
 
           <View style={styles.footer}>
-            <Typography variant="body" color={COLORS.textLight}>
-              {cuisine} • {distance}
+            <Typography variant="caption" color={COLORS.text} weight="600">
+              {pickupTime}
             </Typography>
             <View style={styles.dot} />
             <Typography variant="caption" color={COLORS.textLight}>
-              {reviews} reviews
+              {distance}
             </Typography>
           </View>
         </View>
