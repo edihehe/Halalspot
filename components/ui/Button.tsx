@@ -14,6 +14,7 @@ export const Button: React.FC<ButtonProps> = ({
   variant = 'primary',
   size = 'md',
   style,
+  disabled,
   ...props
 }) => {
   const getVariantStyle = () => {
@@ -40,8 +41,15 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <TouchableOpacity
-      style={[styles.base, getVariantStyle(), getSizing(), style as ViewStyle]}
+      style={[
+        styles.base,
+        getVariantStyle(),
+        getSizing(),
+        disabled && styles.disabled,
+        style as ViewStyle,
+      ]}
       activeOpacity={0.8}
+      disabled={disabled}
       {...props}
     >
       <Typography
@@ -60,5 +68,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...SHADOWS.small,
+  },
+  disabled: {
+    opacity: 0.55,
   },
 });

@@ -1,5 +1,5 @@
 import { COLORS, RADIUS, SPACING } from '@/constants/theme';
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, TextInput, TextInputProps, View } from 'react-native';
 import { Typography } from './Typography';
 
@@ -9,6 +9,8 @@ interface InputProps extends TextInputProps {
 }
 
 export const Input: React.FC<InputProps> = ({ label, error, style, ...props }) => {
+  const [isFocused, setIsFocused] = useState(false);
+
   return (
     <View style={styles.container}>
       {label && (
@@ -16,10 +18,25 @@ export const Input: React.FC<InputProps> = ({ label, error, style, ...props }) =
           {label}
         </Typography>
       )}
-      <View style={[styles.inputWrapper, !!error && styles.errorInput]}>
+      <View
+        style={[
+          styles.inputWrapper,
+          props.multiline && styles.multilineWrapper,
+          isFocused && styles.focusedInput,
+          !!error && styles.errorInput,
+        ]}
+      >
         <TextInput
-          style={[styles.input, style]}
+          style={[styles.input, props.multiline && styles.multilineInput, style]}
           placeholderTextColor={COLORS.textLight}
+          onFocus={(e) => {
+            setIsFocused(true);
+            props.onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setIsFocused(false);
+            props.onBlur?.(e);
+          }}
           {...props}
         />
       </View>
@@ -34,17 +51,16 @@ export const Input: React.FC<InputProps> = ({ label, error, style, ...props }) =
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: SPACING.md,
     width: '100%',
   },
   label: {
     marginBottom: SPACING.xs,
   },
   inputWrapper: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.formBackground,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
+    borderRadius: RADIUS.lg,
     paddingHorizontal: SPACING.md,
     height: 48,
     justifyContent: 'center',
@@ -52,6 +68,24 @@ const styles = StyleSheet.create({
   input: {
     fontSize: 16,
     color: COLORS.text,
+  },
+  multilineWrapper: {
+    height: 'auto',
+    minHeight: 120,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.sm,
+  },
+  multilineInput: {
+    minHeight: 90,
+    textAlignVertical: 'top',
+  },
+  focusedInput: {
+    borderColor: COLORS.focus,
+    shadowColor: COLORS.focus,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.14,
+    shadowRadius: 6,
+    elevation: 1,
   },
   errorInput: {
     borderColor: COLORS.error,

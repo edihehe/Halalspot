@@ -28,11 +28,12 @@ model Restaurant {
   reviews          Int
   latitude         Float
   longitude        Float
-  address          String?
+  address          String
   description      String?
   features         String[] @default([])
   price            String?
   status           String?
+  pickupTime       String?
   verificationDate DateTime?
   verified         Boolean  @default(false)
   verifiedBy       String?
